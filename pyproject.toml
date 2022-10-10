@@ -9,10 +9,7 @@ readme = "README.md"
 license = {file = "LICENSE"}
 classifiers = ["License :: OSI Approved :: MIT License"]
 dynamic = ["version", "description"]
-dependencies = [
-    "scikit-learn",
-    "scanpy",
-]
+dependencies = []
 
 [project.urls]
 Home = "https://github.com/keiserlab/exceiver"
