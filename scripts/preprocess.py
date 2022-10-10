@@ -2,15 +2,14 @@
 Author: Will Connell
 Date Initialized: 2022-04-07
 Email: connell@keiserlab.org
-""" 
+"""
 
 
 ###########################################################################################################################################
-#        #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       # 
-#                                                                IMPORT MODULES                                                            
-#    #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #     
+#        #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #
+#                                                                IMPORT MODULES
+#    #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #
 ###########################################################################################################################################
-
 
 
 # I/0
@@ -29,13 +28,11 @@ import anndata as ad
 from exceiver.genes import PROTCODE_GENES
 
 
-
 ###########################################################################################################################################
-#        #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       # 
-#                                                              PRIMARY FUNCTIONS                                                           
-#    #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #     
+#        #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #
+#                                                              PRIMARY FUNCTIONS
+#    #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #
 ###########################################################################################################################################
-
 
 
 def main(args):
@@ -54,8 +51,10 @@ def main(args):
 
     # tsdata.X is scVI corrected gene matrix
     if args.ts_path.stem == "TabulaSapiens":
-        count_var = 'decontXcounts'
-    tsdata = ad.AnnData(tsdata.layers[count_var], obs=tsdata.obs, var=tsdata.var, uns=tsdata.uns)
+        count_var = "decontXcounts"
+    tsdata = ad.AnnData(
+        tsdata.layers[count_var], obs=tsdata.obs, var=tsdata.var, uns=tsdata.uns
+    )
     print("Selected AnnData layer.")
 
     # remove incorrect non-sparse idx
@@ -69,23 +68,25 @@ def main(args):
     # random split
     train_loc = tsdata.obs.sample(frac=0.7, replace=False).index
     val_loc = tsdata.obs.index[~tsdata.obs.index.isin(train_loc)]
-    ts_train = tsdata[train_loc,:]
-    ts_val = tsdata[val_loc,:]
+    ts_train = tsdata[train_loc, :]
+    ts_val = tsdata[val_loc, :]
     print("Split into training and testing.")
 
     # calculate metrics
-    sc.pp.calculate_qc_metrics(ts_train, expr_type='counts', inplace=True)
-    sc.pp.calculate_qc_metrics(ts_val, expr_type='counts', inplace=True)
+    sc.pp.calculate_qc_metrics(ts_train, expr_type="counts", inplace=True)
+    sc.pp.calculate_qc_metrics(ts_val, expr_type="counts", inplace=True)
     print("Calculated QC metrics.")
 
     # remove genes with high sparsity
-    sc.pp.filter_genes(ts_train, min_cells=int(ts_train.n_obs * args.gene_filter), inplace=True)
-    ts_val = ts_val[:,ts_train.var_names]
+    sc.pp.filter_genes(
+        ts_train, min_cells=int(ts_train.n_obs * args.gene_filter), inplace=True
+    )
+    ts_val = ts_val[:, ts_train.var_names]
     print(f"Filtered genes using gene_filter = {args.gene_filter}.")
 
-    # recalculate metrics 
-    sc.pp.calculate_qc_metrics(ts_train, expr_type='counts', inplace=True)
-    sc.pp.calculate_qc_metrics(ts_val, expr_type='counts', inplace=True)
+    # recalculate metrics
+    sc.pp.calculate_qc_metrics(ts_train, expr_type="counts", inplace=True)
+    sc.pp.calculate_qc_metrics(ts_val, expr_type="counts", inplace=True)
     print("Recalculated QC metrics.")
 
     # total count normalize
@@ -110,7 +111,6 @@ def main(args):
     print("Saved data.")
 
 
-
 ###########################################################################################################################################
 #        #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #
 #                                                                    CLI
@@ -118,15 +118,25 @@ def main(args):
 ###########################################################################################################################################
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     # Set up argument parser
     desc = "Script for preprocessing scRNAseq training data."
-    parser = argparse.ArgumentParser(description = desc, formatter_class = argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("--ts_path", type = Path, help = "File path to TabulaSapiens scRNAseq data.")
-    parser.add_argument("--out_path", type = Path, help = "Directory path to write processed data.")
-    parser.add_argument("--gene_filter", type = float, default = 0.000, help = "Minimum fraction of cells a gene must appear in to pass filtering.")
+    parser = argparse.ArgumentParser(
+        description=desc, formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument(
+        "--ts_path", type=Path, help="File path to TabulaSapiens scRNAseq data."
+    )
+    parser.add_argument(
+        "--out_path", type=Path, help="Directory path to write processed data."
+    )
+    parser.add_argument(
+        "--gene_filter",
+        type=float,
+        default=0.000,
+        help="Minimum fraction of cells a gene must appear in to pass filtering.",
+    )
 
     # Run
     args = parser.parse_args()

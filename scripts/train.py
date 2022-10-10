@@ -2,13 +2,13 @@
 Author: Will Connell
 Date Initialized: 2022-04-07
 Email: connell@keiserlab.org
-""" 
+"""
 
 
 ###########################################################################################################################################
-#        #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       # 
-#                                                                IMPORT MODULES                                                            
-#    #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #     
+#        #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #
+#                                                                IMPORT MODULES
+#    #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #
 ###########################################################################################################################################
 
 
@@ -29,11 +29,11 @@ from exceiver.models import Exceiver, ExceiverClassifier
 
 
 ###########################################################################################################################################
-#        #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       # 
-#                                                              PRIMARY FUNCTIONS                                                           
-#    #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #     
+#        #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #
+#                                                              PRIMARY FUNCTIONS
+#    #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #
 ###########################################################################################################################################
-    
+
 
 def main(args):
 
@@ -42,7 +42,7 @@ def main(args):
 
     # Make logging directory
     args.logs.mkdir(parents=True, exist_ok=True)
-    
+
     # Set up data module
     dm = ExceiverDataModule.from_argparse_args(args)
     dm.prepare_data()
@@ -55,32 +55,36 @@ def main(args):
     if args.classify is None:
         model = Exceiver(**dict_args)
     else:
-        model = ExceiverClassifier(classify_dim = dm.val_adata.obs[args.classify].nunique(), **dict_args)
+        model = ExceiverClassifier(
+            classify_dim=dm.val_adata.obs[args.classify].nunique(), **dict_args
+        )
 
     # Set up callbacks
-    logger = TensorBoardLogger(save_dir=args.logs,
-                               version=args.name,
-                               name='lightning_logs',
-                               default_hp_metric=False)
-    early_stop = EarlyStopping(monitor='val_MSELoss',
-                               min_delta=1e-5,
-                               patience=10,
-                               verbose=False,
-                               mode='min')
-    checkpoint_callback = ModelCheckpoint(monitor='val_MSELoss',
-                                          mode='min',
-                                          save_last=True)
+    logger = TensorBoardLogger(
+        save_dir=args.logs,
+        version=args.name,
+        name="lightning_logs",
+        default_hp_metric=False,
+    )
+    early_stop = EarlyStopping(
+        monitor="val_MSELoss", min_delta=1e-5, patience=10, verbose=False, mode="min"
+    )
+    checkpoint_callback = ModelCheckpoint(
+        monitor="val_MSELoss", mode="min", save_last=True
+    )
     if args.strategy == "ddp":
         pass
 
     # Set up Trainer
     start = datetime.now()
-    trainer = Trainer.from_argparse_args(args,
-                                         default_root_dir=logger.log_dir,
-                                         logger=logger,
-                                         callbacks=[early_stop, checkpoint_callback],
-                                         profiler="simple",
-                                         replace_sampler_ddp=False)
+    trainer = Trainer.from_argparse_args(
+        args,
+        default_root_dir=logger.log_dir,
+        logger=logger,
+        callbacks=[early_stop, checkpoint_callback],
+        profiler="simple",
+        replace_sampler_ddp=False,
+    )
 
     # Train model
     trainer.fit(model, dm)
@@ -88,11 +92,13 @@ def main(args):
     print(f"Model saved at {checkpoint_callback.best_model_path}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     # Set up argument parser
     desc = "Script for self-supervised scRNAseq training."
-    parser = argparse.ArgumentParser(description=desc, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=desc, formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
     parser.add_argument("--name", type=str, help="Prepended name of experiment.")
     parser.add_argument("--logs", type=Path, help="Path to model logs and checkpoints.")
 
