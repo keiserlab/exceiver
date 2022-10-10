@@ -1,0 +1,18 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "exceiver"
+authors = [{name = "William Connell", email = "connell@keiserlab.org"}, {name = "Umair Khan", email = "ukhan@keiserlab.org"}]
+readme = "README.md"
+license = {file = "LICENSE"}
+classifiers = ["License :: OSI Approved :: MIT License"]
+dynamic = ["version", "description"]
+dependencies = [
+    "scikit-learn",
+    "scanpy",
+]
+
+[project.urls]
+Home = "https://github.com/keiserlab/exceiver"
