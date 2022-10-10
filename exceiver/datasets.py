@@ -3,7 +3,7 @@ Author: Will Connell
 Date Initialized: 2022-04-06
 Email: connell@keiserlab.org
 
-Script for datasets.
+Exceiver datasets and dataloaders.
 """
 
 
@@ -42,7 +42,7 @@ import scanpy as sc
 ###########################################################################################################################################
 
 
-class scDataset(Dataset):
+class ExceiverDataset(Dataset):
     def __init__(
         self,
         csr,
@@ -231,7 +231,7 @@ class ExceiverDataModule(pl.LightningDataModule):
 
         if stage == "fit":
 
-            self.train_dataset = scDataset(
+            self.train_dataset = ExceiverDataset(
                 self.train_adata.X,
                 classes=self.train_classes,
                 scaler=self.train_scaler,
@@ -239,7 +239,7 @@ class ExceiverDataModule(pl.LightningDataModule):
                 batch_size=self.batch_size,
                 pin_memory=False,
             )
-            self.val_dataset = scDataset(
+            self.val_dataset = ExceiverDataset(
                 self.val_adata.X,
                 classes=self.val_classes,
                 scaler=self.val_scaler,

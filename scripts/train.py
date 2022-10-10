@@ -2,6 +2,8 @@
 Author: Will Connell
 Date Initialized: 2022-04-07
 Email: connell@keiserlab.org
+
+Script to train Exceiver on Tabula Sapiens.
 """
 
 
