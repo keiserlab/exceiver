@@ -2,10 +2,10 @@
 
 """
 Author: Will Connell
-Date Initialized: 2020-12-22
+Date Initialized: 2022-04-07
 Email: connell@keiserlab.org
 
-Models; code modified from: https://d2l.ai/_modules/d2l/torch.html
+Exceiver models. Core modules based on Perceiver IO architecture: https://arxiv.org/abs/2107.14795.
 """
 
 

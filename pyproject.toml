@@ -9,7 +9,14 @@ readme = "README.md"
 license = {file = "LICENSE"}
 classifiers = ["License :: OSI Approved :: MIT License"]
 dynamic = ["version", "description"]
-dependencies = []
+dependencies = [
+    "torch >=1.12.0",
+    "pytorch-lightning >=1.6.5",
+    "scanpy >=1.9.1",
+    "scikit-learn >=1.1.1",
+    "pandas >1.4.3",
+    "numpy >=1.22.4",
+]
 
 [project.urls]
 Home = "https://github.com/keiserlab/exceiver"
