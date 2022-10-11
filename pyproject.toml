@@ -14,7 +14,7 @@ dependencies = [
     "pytorch-lightning >=1.6.5",
     "scanpy >=1.9.1",
     "scikit-learn >=1.1.1",
-    "pandas >1.4.3",
+    "pandas >=1.4.3",
     "numpy >=1.22.4",
 ]
 
