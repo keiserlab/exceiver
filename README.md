@@ -30,7 +30,7 @@ python preprocess.py --ts_path /path/to/download/TabulaSapiens.h5ad
 
 ## training
 
-`pytorch-lightning` makes distributed training easy and CLI access to a host of hyperparameters by running `scripts/train.py`:
+`pytorch_lightning` makes distributed training easy and CLI access to a host of hyperparameters by running `scripts/train.py`:
 
 ```
 python train.py --name MODELNAME 
