@@ -1,6 +1,6 @@
 # exceiver
 
-[![arXiv](https://img.shields.io/badge/arXiv-1234.56789-b31b1b.svg)](https://arxiv.org/abs/2210.14330)
+[![arXiv](https://img.shields.io/badge/arXiv-2210.14330-b31b1b.svg)](https://arxiv.org/abs/2210.14330)
 
 A pretrained single cell gene expression language model.
 
