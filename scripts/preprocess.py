@@ -19,7 +19,6 @@ from pathlib import Path
 import argparse
 
 # Data handling
-import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 import scanpy as sc
@@ -50,11 +49,7 @@ def main(args):
     # https://scanpy-tutorials.readthedocs.io/en/latest/pbmc3k.html
 
     # tsdata.X is scVI corrected gene matrix
-    if args.ts_path.stem == "TabulaSapiens":
-        count_var = "decontXcounts"
-    tsdata = ad.AnnData(
-        tsdata.layers[count_var], obs=tsdata.obs, var=tsdata.var, uns=tsdata.uns
-    )
+    tsdata = ad.AnnData(tsdata.layers[args.count_var], obs=tsdata.obs, var=tsdata.var, uns=tsdata.uns)
     print("Selected AnnData layer.")
 
     # remove incorrect non-sparse idx
@@ -123,19 +118,30 @@ if __name__ == "__main__":
     # Set up argument parser
     desc = "Script for preprocessing scRNAseq training data."
     parser = argparse.ArgumentParser(
-        description=desc, formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        description=desc,
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument(
-        "--ts_path", type=Path, help="File path to TabulaSapiens scRNAseq data."
+        "--ts_path",
+        type=Path,
+        help="File path to TabulaSapiens scRNAseq data."
     )
     parser.add_argument(
-        "--out_path", type=Path, help="Directory path to write processed data."
+        "--out_path",
+        type=Path,
+        help="Directory path to write processed data."
     )
     parser.add_argument(
         "--gene_filter",
         type=float,
         default=0.000,
         help="Minimum fraction of cells a gene must appear in to pass filtering.",
+    )
+    parser.add_argument(
+        "--count_var",
+        type=str,
+        default="decontXcounts",
+        help="Layer to select from input AnnData object."
     )
 
     # Run
