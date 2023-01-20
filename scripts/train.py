@@ -27,7 +27,7 @@ from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
 
 # Custom
 from exceiver.datasets import ExceiverDataModule
-from exceiver.models import Exceiver, ExceiverClassifier
+from exceiver.models import Exceiver, ExceiverClassifier, ExceiverBatchifier
 
 
 ###########################################################################################################################################
@@ -54,12 +54,12 @@ def main(args):
     dict_args = vars(args)
 
     # Set up model
-    if args.classify is None:
-        model = Exceiver(**dict_args)
+    if args.classify is not None:
+        model = ExceiverClassifier(classify_dim=dm.val_adata.obs[args.classify].nunique(), **dict_args)
+    elif args.batchify is not None:
+        model = ExceiverBatchifier(num_batches=dm.val_adata.obs[args.batchify].nunique(), **dict_args)
     else:
-        model = ExceiverClassifier(
-            classify_dim=dm.val_adata.obs[args.classify].nunique(), **dict_args
-        )
+        model = Exceiver(**dict_args)
 
     # Set up callbacks
     logger = TensorBoardLogger(

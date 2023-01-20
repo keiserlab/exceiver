@@ -425,6 +425,112 @@ class ExceiverClassifier(Exceiver):
         )
 
 
+class ExceiverBatchifier(Exceiver):
+    def __init__(
+        self,
+        seq_len,
+        seq_dim,
+        query_len,
+        query_dim,
+        num_batches=None,
+        num_layers: int = 1,
+        nhead: int = 1,
+        dim_feedforward: int = 2048,
+        dropout: float = 0.0,  # process attn module
+        learning_rate: float = 3e-4,
+        weight_decay: float = 1e-5,
+        warmup_steps: int = 500,
+        **kwargs
+    ):
+
+        # Initialize superclass
+        super().__init__(
+            seq_len,
+            seq_dim,
+            query_len,
+            query_dim,
+            num_layers=num_layers,
+            nhead=nhead,
+            dim_feedforward=dim_feedforward,
+            dropout=dropout,
+            learning_rate=learning_rate,
+            weight_decay=weight_decay,
+            warmup_steps=warmup_steps,
+        )
+
+        # Add an extra token to the embedding for the batch
+        self.gene_emb = nn.Embedding(seq_len + 1 + num_batches, seq_dim, padding_idx=seq_len)
+
+        # Save hyperparameters
+        self.save_hyperparameters()
+
+    def encoder_attn_step(self, gene_ids, gene_vals, input_query, key_padding_mask, batch_emb):
+        gene_emb = self.gene_emb(gene_ids.long())
+        key_val = gene_vals.unsqueeze(2) * gene_emb
+        key_val = torch.stack([torch.cat((key_val[i], batch_emb[i].unsqueeze(0))) for i in range(key_val.shape[0])])
+        latent, encoder_weights = self.encoder_cross_attn(
+            input_query, key_val, key_padding_mask
+        )
+        return latent, encoder_weights
+
+    def forward(self, gene_ids, gene_vals, input_query, key_padding_mask, mask_ids, batch_emb):
+        output_query = self.gene_emb(mask_ids)
+        latent, encoder_weights = self.encoder_attn_step(
+            gene_ids, gene_vals, input_query, key_padding_mask, batch_emb
+        )
+        latent = self.process_self_attn(latent)
+        latent = torch.stack([torch.cat((latent[i], batch_emb[i].unsqueeze(0))) for i in range(latent.shape[0])])
+        decoder_out, decoder_weights = self.decoder_cross_attn(
+            output_query, latent, key_padding_mask=None
+        )
+        return decoder_out
+
+    def training_step(self, batch, batch_idx):
+        gene_ids, gene_vals, mask_ids, mask_vals, key_padding_mask, batches = batch
+        batch_emb = self.gene_emb(batches + self.seq_len + 1)
+        input_query = self.query_emb.repeat(len(gene_ids), 1, 1)
+        decoder_out = self.forward(
+            gene_ids, gene_vals, input_query, key_padding_mask, mask_ids, batch_emb
+        )
+        y_hat = self.mlp(decoder_out)
+        loss = self.mse(y_hat, mask_vals.unsqueeze(2))
+        metrics = self.train_metrics(y_hat, mask_vals.unsqueeze(2))
+        loss_dict = {"train_MSELoss": loss}
+        self.log_dict(loss_dict | metrics, on_step=False, on_epoch=True, sync_dist=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        gene_ids, gene_vals, mask_ids, mask_vals, key_padding_mask, batches = batch
+        batch_emb = self.gene_emb(batches + self.seq_len + 1)
+        input_query = self.query_emb.repeat(len(gene_ids), 1, 1)
+        decoder_out = self.forward(
+            gene_ids, gene_vals, input_query, key_padding_mask, mask_ids, batch_emb
+        )
+        y_hat = self.mlp(decoder_out)
+        loss = self.mse(y_hat, mask_vals.unsqueeze(2))
+        metrics = self.val_metrics(y_hat, mask_vals.unsqueeze(2))
+        loss_dict = {"val_MSELoss": loss}
+        self.log_dict(loss_dict | metrics, on_step=False, on_epoch=True, sync_dist=True)
+        return loss
+
+    def test_step(self, batch, batch_idx):
+        gene_ids, gene_vals, mask_ids, mask_vals, key_padding_mask, batches = batch
+        batch_emb = self.gene_emb(batches + self.seq_len + 1)
+        input_query = self.query_emb.repeat(len(gene_ids), 1, 1)
+        decoder_out = self.forward(
+            gene_ids, gene_vals, input_query, key_padding_mask, mask_ids, batch_emb
+        )
+        y_hat = self.mlp(decoder_out)
+        return y_hat, mask_vals
+
+    def test_step_end(self, results):
+        y_hat, mask_vals = results
+        loss = self.mse(y_hat, mask_vals.unsqueeze(2))
+        metrics = self.test_metrics(y_hat, mask_vals.unsqueeze(2))
+        loss_dict = {"test_MSELoss": loss}
+        self.log_dict(loss_dict | metrics, on_step=False, on_epoch=True, sync_dist=True)
+
+
 ###########################################################################################################################################
 #        #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #       #
 #                                                           FINE TUNE MODELS

@@ -47,6 +47,7 @@ class ExceiverDataset(Dataset):
         self,
         csr,
         classes,
+        batches,
         scaler,
         n_mask,
         batch_size,
@@ -57,6 +58,7 @@ class ExceiverDataset(Dataset):
         self.csr = csr
         self.csr.eliminate_zeros()
         self.classes = classes
+        self.batches = batches
         self.scaler = scaler
         self.n_samples = csr.shape[0]
         self.n_features = csr.shape[1]
@@ -85,11 +87,17 @@ class ExceiverDataset(Dataset):
         gene_vals += 1
         # embedding indices
         gene_ids = torch.arange(0, self.n_features).repeat(self.batch_size, 1)
+
         # input key_padding_mask to mask attention at "pad" indices
         # get nonsparse indices
-        row, col = self.csr[idx].nonzero()
-        key_padding_mask = torch.ones_like(gene_vals).detach()
-        key_padding_mask[row, col] = 0
+        if self.batches is not None:
+            row, col = self.csr[idx].nonzero()
+            key_padding_mask = torch.ones((self.batch_size, self.n_features + 1)).detach()
+            key_padding_mask[row, col] = 0
+        else:
+            row, col = self.csr[idx].nonzero()
+            key_padding_mask = torch.ones_like(gene_vals).detach()
+            key_padding_mask[row, col] = 0
 
         # for inference
         if self.inference:
@@ -129,11 +137,14 @@ class ExceiverDataset(Dataset):
             # "mask" = second to last embedding index = n_features
             gene_ids[mask_row_ids, mask_col_ids] = self.n_features
 
-        if self.classes is None:
-            batch = gene_ids, gene_vals, mask_ids, mask_vals, key_padding_mask
-        else:
+        if self.classes is not None:
             classes = torch.tensor(self.classes[idx])
             batch = gene_ids, gene_vals, mask_ids, mask_vals, key_padding_mask, classes
+        elif self.batches is not None:
+            batches = torch.tensor(self.batches[idx])
+            batch = gene_ids, gene_vals, mask_ids, mask_vals, key_padding_mask, batches
+        else:
+            batch = gene_ids, gene_vals, mask_ids, mask_vals, key_padding_mask
 
         if self.pin_memory:
             for tensor in batch:
@@ -143,10 +154,11 @@ class ExceiverDataset(Dataset):
 
 
 class ExceiverDataModule(pl.LightningDataModule):
-    def __init__(self, data_path, classify, frac=0.15, batch_size=32, num_workers=6):
+    def __init__(self, data_path, classify, batchify, frac=0.15, batch_size=32, num_workers=6):
         super().__init__()
         self.data_path = data_path
         self.classify = classify
+        self.batchify = batchify
         self.frac = frac
         self.batch_size = batch_size
         self.num_workers = num_workers
@@ -162,6 +174,12 @@ class ExceiverDataModule(pl.LightningDataModule):
             type=str,
             default=None,
             help="Name of column from `obs` table to add classification task with. (optional)",
+        )
+        parser.add_argument(
+            "--batchify",
+            type=str,
+            default=None,
+            help="Name of column from `obs` table to add explicit batch modeling with. (optional)",
         )
         parser.add_argument(
             "--frac",
@@ -226,6 +244,25 @@ class ExceiverDataModule(pl.LightningDataModule):
                 [self.classify_dict[code] for code in self.val_adata.obs[self.classify]]
             )
 
+        # Prepare batch labels
+        print(f"preparing batch labels for {self.batchify}")
+        self.train_batches = None
+        self.val_batches = None
+
+        if self.batchify:
+
+            if not np.array_equal(
+                np.unique(self.train_adata.obs[self.batchify]),
+                np.unique(self.val_adata.obs[self.batchify]),
+            ):
+                raise ValueError(f"Class mismatch in *_adata.obs[{self.classify}]")
+            
+            self.batchify_codes = list(self.train_adata.obs[self.batchify].unique())
+            self.batchify_dict = {j: i for i, j in enumerate(self.batchify_codes)}
+
+            self.train_batches = np.array([self.batchify_dict[code] for code in self.train_adata.obs[self.batchify]])
+            self.val_batches = np.array([self.batchify_dict[code] for code in self.val_adata.obs[self.batchify]])
+
     # OPTIONAL, called for every GPU/machine (assigning state is OK)
     def setup(self, stage):
 
@@ -234,6 +271,7 @@ class ExceiverDataModule(pl.LightningDataModule):
             self.train_dataset = ExceiverDataset(
                 self.train_adata.X,
                 classes=self.train_classes,
+                batches=self.train_batches,
                 scaler=self.train_scaler,
                 n_mask=self.n_mask,
                 batch_size=self.batch_size,
@@ -242,6 +280,7 @@ class ExceiverDataModule(pl.LightningDataModule):
             self.val_dataset = ExceiverDataset(
                 self.val_adata.X,
                 classes=self.val_classes,
+                batches=self.val_batches,
                 scaler=self.val_scaler,
                 n_mask=self.n_mask,
                 batch_size=self.batch_size,
