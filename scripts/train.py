@@ -55,11 +55,15 @@ def main(args):
 
     # Set up model
     if args.classify is None:
-        model = Exceiver(**dict_args)
+        if args.load:
+            model = Exceiver.load_from_checkpoint(checkpoint_path=args.load)
+        else:
+            model = Exceiver(**dict_args)
     else:
-        model = ExceiverClassifier(
-            classify_dim=dm.val_adata.obs[args.classify].nunique(), **dict_args
-        )
+        if args.load:
+            model = ExceiverClassifier.load_from_checkpoint(checkpoint_path=args.load)
+        else:
+            model = ExceiverClassifier(classify_dim=dm.val_adata.obs[args.classify].nunique(), **dict_args)
 
     # Set up callbacks
     logger = TensorBoardLogger(
@@ -103,6 +107,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--name", type=str, help="Prepended name of experiment.")
     parser.add_argument("--logs", type=Path, help="Path to model logs and checkpoints.")
+    parser.add_argument("--load", type=str, default=None, help="Path to checkpoint to load into model.")
 
     # Add arguments from classes
     parser = Exceiver.add_argparse_args(parser)

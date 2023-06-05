@@ -40,17 +40,23 @@ def main(args):
     tsdata = sc.read_h5ad(args.ts_path)
     print("Loaded data.")
 
-    # Subset to protein coding genes (defined by CCLE)
-    gene_features = list(set(PROTCODE_GENES).intersection(set(tsdata.var_names)))
+    # Get list of gene features (defined by CCLE)
+    if args.gene_features is None:
+        gene_features = list(set(PROTCODE_GENES).intersection(set(tsdata.var_names)))
+    else:
+        gene_features = joblib.load(args.gene_features)
+
+    # Subset to features
     tsdata = tsdata[:, gene_features]
-    print("Subsetted to CCLE genes.")
+    print("Subsetted to CCLE gene features.")
 
     # QC follows standard scanpy preprocessing tutorial
     # https://scanpy-tutorials.readthedocs.io/en/latest/pbmc3k.html
 
     # tsdata.X is scVI corrected gene matrix
-    tsdata = ad.AnnData(tsdata.layers[args.count_var], obs=tsdata.obs, var=tsdata.var, uns=tsdata.uns)
-    print("Selected AnnData layer.")
+    if args.count_var is not None:
+        tsdata = ad.AnnData(tsdata.layers[args.count_var], obs=tsdata.obs, var=tsdata.var, uns=tsdata.uns)
+        print("Selected AnnData layer.")
 
     # remove incorrect non-sparse idx
     tsdata.X.eliminate_zeros()
@@ -73,16 +79,17 @@ def main(args):
     print("Calculated QC metrics.")
 
     # remove genes with high sparsity
-    sc.pp.filter_genes(
-        ts_train, min_cells=int(ts_train.n_obs * args.gene_filter), inplace=True
-    )
-    ts_val = ts_val[:, ts_train.var_names]
-    print(f"Filtered genes using gene_filter = {args.gene_filter}.")
+    if args.gene_filter > 0:
 
-    # recalculate metrics
-    sc.pp.calculate_qc_metrics(ts_train, expr_type="counts", inplace=True)
-    sc.pp.calculate_qc_metrics(ts_val, expr_type="counts", inplace=True)
-    print("Recalculated QC metrics.")
+        # filter genes
+        sc.pp.filter_genes(ts_train, min_cells=int(ts_train.n_obs * args.gene_filter), inplace=True)
+        ts_val = ts_val[:, ts_train.var_names]
+        print(f"Filtered genes using gene_filter = {args.gene_filter}.")
+
+        # recalculate metrics
+        sc.pp.calculate_qc_metrics(ts_train, expr_type="counts", inplace=True)
+        sc.pp.calculate_qc_metrics(ts_val, expr_type="counts", inplace=True)
+        print("Recalculated QC metrics.")
 
     # total count normalize
     sc.pp.normalize_total(ts_train, target_sum=1e4)
@@ -121,6 +128,8 @@ if __name__ == "__main__":
         description=desc,
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
+
+    # Format arguments
     parser.add_argument(
         "--ts_path",
         type=Path,
@@ -140,8 +149,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--count_var",
         type=str,
-        default="decontXcounts",
+        default=None,
         help="Layer to select from input AnnData object."
+    )
+    parser.add_argument(
+        "--gene_features",
+        type=str,
+        default=None,
+        help="Path to list of gene features to use."
     )
 
     # Run

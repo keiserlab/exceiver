@@ -327,7 +327,7 @@ class ExceiverClassifier(Exceiver):
 
         # Set up functions for classification
         self.cel = nn.CrossEntropyLoss()
-        self.class_metrics = MetricCollection([Accuracy()])
+        self.class_metrics = MetricCollection([Accuracy(task="multiclass", num_classes = classify_dim)])
         self.train_class_metrics = self.class_metrics.clone(prefix="train_")
         self.val_class_metrics = self.class_metrics.clone(prefix="val_")
         self.test_class_metrics = self.class_metrics.clone(prefix="test_")
